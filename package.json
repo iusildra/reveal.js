@@ -8,9 +8,9 @@
   "module": "dist/reveal.esm.js",
   "license": "MIT",
   "scripts": {
-    "test": "gulp test",
-    "start": "gulp serve",
-    "build": "gulp build"
+    "test":  "npx gulp test",
+    "start": "npx gulp serve",
+    "build": "npx gulp build"
   },
   "author": {
     "name": "Hakim El Hattab",

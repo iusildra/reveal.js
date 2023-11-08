@@ -1,0 +1,48 @@
+.custom {
+  margin-top: 20px;
+  font-size: xx-large;
+}
+
+p {
+  font-size: xx-large;
+}
+
+p.small {
+  font-size: x-large;
+}
+
+ol.custom li, ul.custom li {
+  margin-bottom: 20px;
+}
+
+.code {
+  font-family: monospace;
+  font-size: 1em;
+  background-color: #666;
+  padding: 0.1em 0.2em;
+  border-radius: 3px;
+}
+
+.r-stack .fragment .scala {
+  width: 100%;
+}
+
+.flex {
+  display: flex;
+}
+
+.c1 {
+  width: 100%;
+}
+
+.c2 {
+  width: 50%;
+}
+
+.c3 {
+  width: 33%;
+}
+
+.c4 {
+  width: 25%;
+}
