@@ -33,9 +33,10 @@
           </p>
         </section>
         <section>
-          <h2>Table of content</h2>
+          <h2>Table of contents</h2>
           <ul>
             <li><a href="#introduction">Introduction</a></li>
+            <li><a href="#scala-reminders">Scala reminders</a></li>
             <li>
               <a href="#functional-design">Type class - Functional design</a>
             </li>
@@ -61,48 +62,93 @@
               An Algebraic Data Type is a composite type made of other types
             </p>
 
-            <pre class="scala"><code data-trim data-noescape data-line-numbers>
-              type List[A]   = Nil | Cons[A]
-              type Option[A] = None | Some[A]
+            <pre class="scala">
+              <code data-trim data-noescape data-line-numbers="1-2|4-10">
+                type List[A]   = Nil | Cons[A]
+                type Option[A] = None | Some[A]
 
+                sealed trait Tree
+                case class Name() extends Tree
+                case class Select(qual: Tree, name: Name) extends Tree
+                case class Method(fun: Tree, args: ArgClauses) extends Tree
+                case class If(p: Tree, thenp: Tree, elsep: Tree) extends Tree
 
-              sealed trait Tree
-              case class Name() extends Tree
-              case class Select(qual: Tree, name: Name) extends Tree
-              case class Method(fun: Tree, args: ArgClauses) extends Tree
-              case class If(p: Tree, thenp: Tree, elsep: Tree) extends Tree
-
-              case class ArgClauses(args: List[List[Tree]]) extends Tree
-            </code></pre>
+                case class ArgClauses(args: List[List[Tree]]) extends Tree
+              </code>
+            </pre>
           </section>
           <section>
             <h3>Failure handling mechanisms</h3>
 
-            <div class="r-stack">
-              <div class="fragment fade-in-then-out" data-markdown>
-                <textarea data-template>
-                  |                 | Null     | Exception | ADT        |
-                  |-----------------|----------|-----------| -----------|
-                  | Difficulty      | Easy     | Easy      | Less easy  |
-                  | Failure reason  | Unknown  | Known     | Known      |
-                  | Performances    | Best     | Bad       | Better     |
-                  | Expressivity    | Bad      | Better    | Best       |
-                  | Runtime failure | Possible | Possible  | No         |
-                </textarea>
-              </div>
-              <div class="fragment fade-in" data-markdown>
-                <textarea data-template>
-                  | Benchmark      | Count | ms/operation  | Error   |
-                  |----------------|-------|---------------|---------|
-                  | No exceptions  | 10    | 0.046         | ± 0.003 |
-                  | Throw catch    | 10    | 16.268        | ± 0.239 |
-                  | Throw no catch | 10    | 17.874        | ± 3.199 |
-                  | Fast exception | 10    | 1.174         | ± 0.014 |
-      
-                  https://baeldung.com/java-exceptions-performance
-                </textarea>
-              </div>
-            </div>
+            <table class="reverse">
+              <tr>
+                <td> </td>
+                <td>Difficulty</td>
+                <td>Failure reason</td>
+                <td>Performances</td>
+                <td>Expressivity</td>
+                <td>Runtime failure</td>
+              </tr>
+              <tr class="fragment">
+                <td>Null</td>
+                <td>Easy</td>
+                <td>Unknown</td>
+                <td>Best</td>
+                <td>Bad</td>
+                <td>Possible</td>
+              </tr>
+              <tr class="fragment">
+                <td>Exception</td>
+                <td>Easy</td>
+                <td>Known</td>
+                <td>Bad</td>
+                <td>Better</td>
+                <td>Possible</td>
+              </tr>
+              <tr class="fragment">
+                <td>ADT</td>
+                <td>Less easy</td>
+                <td>Known</td>
+                <td>Better</td>
+                <td>Best</td>
+                <td>No</td>
+              </tr>
+              <tr></tr>
+            </table>
+          </section>
+          <section>
+            <h3>Exceptions & performances</h3>
+            <table>
+              <tr>
+                <th>Benchmark</th>
+                <td>ms/operation (avg)</td>
+                <th>Error</th>
+              </tr>
+              <tr class="fragment">
+                <td>No exceptions</td>
+                <td>0.046</td>
+                <td>± 0.003</td>
+              </tr>
+              <tr class="fragment">
+                <td>Throw catch</td>
+                <td>16.268</td>
+                <td>± 0.239</td>
+              </tr>
+              <tr class="fragment">
+                <td>Throw no catch</td>
+                <td>17.874</td>
+                <td>± 3.199</td>
+              </tr>
+              <tr class="fragment">
+                <td>Fast exception</td>
+                <td>1.174</td>
+                <td>± 0.014</td>
+              </tr>
+            </table>
+
+            <a href="https://baeldung.com/java-exceptions-performance"
+              >https://baeldung.com/java-exceptions-performance</a
+            >
           </section>
           <!-- ------------------------- Parser combinators -------------------------- -->
           <section id="parser-combinator">
@@ -115,22 +161,20 @@
                 alt="Lego"
               />
               <pre class="fragment scala">
-                <code data-trim data-noescape data-line-numbers>
+                <code data-trim data-noescape data-line-numbers="1-3|5-8|10-13|">
                   val tpeSep: Parser[String]  // ( : ) | (: ) | ( :)
                   val alphas: Parser[Char]    // [a-zA-Z]
                   val name: Parser[String]    = alphas.repeat.combineAll
 
                   // Parser[Param] -- x: Int
-                  (name <* tpeSep).product(name).map(Param(name = _, tpeName = _))
+                  (name <* tpeSep)
+                    .product(name)
+                    .map{ (nme, tpeName) => Param(nme, tpeName) }
 
-                  // Parser[Queue[Param]] -- // x: A, y: B, z: C
-                  (paramParser <* paramSepParser).repeat
-                    .combineWith(Queue.empty)(_ :+ _)
-                    .product(paramParser.orElse(Parser.empty))
-                    .map {
-                      case (params, param: Param) => params :+ param
-                      case (params, null)                    => params
-                    }
+                  // Parser[Method] -- // def foo(x: A, y: B, z: C): XX
+                  val methodParser =
+                    (methodName, methodParams, methodType)
+                      .mapN { case (a, b, c) => Method(a, b, c) }
                 </code>
               </pre>
             </div>
@@ -165,73 +209,130 @@
               />
             </div>
           </section>
-          <!-- ----------------------------- Reification ----------------------------- -->
-          <section id="reification">
-            <h3>Reification</h3>
-            <div class="r-stack">
-              <div class="fragment fade-in-then-out" data-fragment-index="0">
-                <p>
-                  1 abstract concept = 1 concrete implementation and reification
-                  methods
-                </p>
-                <pre class="scala">
-                  <code data-trim data-noescape data-line-numbers>
-                  trait Parser[+A]:
-                    def parse(input: String): Result[A] // reification method
-                    def map[B](f: A => B): Parser[B] = ParserMap(this, f) // reification method
-                  object Parser:
-                    def string(s: String): Parser[String] = ParserString(s)  // reification method
-                
-                  case class ParserString(s: String) extends Parser[String]:
-                    // implementation
-                  case class ParserMap[A, B](source: Parser[A], f: A => B) extends Parser[B]:
-                    // implementation
+        </section>
+        <!-- ----------------------------------------------------------------------- -->
+        <!--                          Scala lang reminders                           -->
+        <!-- ----------------------------------------------------------------------- -->
+        <section id="scala-reminders">
+          <h2>Scala reminders</h2>
+          <!-- ---------------------------- Scala modules ---------------------------- -->
+          <section id="object">
+            <h3>Object keyword</h3>
+            <p>
+              In Scala, an <span class="code">object</span> defines a singleton
+              class and is treating as a value
+            </p>
+
+            <pre class="fragment scala">
+              <code data-trim data-noescape data-line-numbers="1-2|3-4|">
+                object Foo:
+                  def bar: String = "bar"
+                Foo.bar // "bar"
+                val foo = Foo // Foo$@...
+              </code>
+            </pre>
+
+            <p class="fragment">
+              With a class of <u>same name</u> in the <u>same file</u>, it
+              becomes its companion object, and its methods/fields are static
+              members of the class
+            </p>
+
+            <pre class="fragment scala">
+              <code data-trim data-noescape data-line-numbers="1-2|4-5|3|">
+                class Foo:
+                  def bar: String = "bar"
+                  // static def baz = "baz"
+                object Foo:
+                  def baz: String = "baz"
+                </code>
+            </pre>
+          </section>
+          <!-- ---------------------------- Case classes ----------------------------- -->
+          <section id="case-classes">
+            <h3>Case Classes</h3>
+            <table class="centered">
+              <tr>
+                <th>"Feature"</th>
+                <th>Class</th>
+                <th>Case Class</th>
+              </tr>
+              <tr class="fragment">
+                <th>Attribute visibility</th>
+                <td>Private</td>
+                <td>Public</td>
+              </tr>
+              <tr class="fragment">
+                <th>Getters</th>
+                <td>❌</td>
+                <td>✅</td>
+              </tr>
+              <tr class="fragment">
+                <th>toString</th>
+                <td>❌</td>
+                <td>✅</td>
+              </tr>
+              <tr class="fragment">
+                <th>hashCode</th>
+                <td>❌</td>
+                <td>✅</td>
+              </tr>
+              <tr class="fragment">
+                <th>equals</th>
+                <td>❌</td>
+                <td>✅</td>
+              </tr>
+              <tr class="fragment">
+                <th>unapply methods</th>
+                <td>❌</td>
+                <td>✅</td>
+              </tr>
+            </table>
+            <p class="fragment">Attribute visibility can be overridden</p>
+          </section>
+          <!-- -------------------------- Pattern matching --------------------------- -->
+          <section id="patterns">
+            <h3>Pattern matching</h3>
+            <div class="flex">
+              <div class="c33">
+                <p>Turbo-boosted <span class="code">switch</span></p>
+                <ul class="custom">
+                  <li>Match on type</li>
+                  <li>Match on value</li>
+                  <li>Exhaustive</li>
+                  <li>Recursive patterns</li>
+                  <li>Stop on first match</li>
+                </ul>
+              </div>
+              <div class="c66">
+                <pre class="fragment scala">
+                  <code data-trim data-noescape data-line-numbers="1|4|5|6|8|10-12|7|">
+                    case class Dev(name: String, age: Int)
+    
+                    person match
+                    case Dev("Lulu", 22) => ???
+                    case Dev("Lulu", age) if age > 60 => ???
+                    case p @ (_: Com | _:HR) => ???
+                    case Dev(_, Even(age)) => ???
+                    case _ => ???
+    
+                    object Even:
+                      def unapply(i: Int): Option[Int] =
+                        if i % 2 == 0 then Some(i) else None
                   </code>
                 </pre>
               </div>
-              <div class="fragment fade-in">
-                <p>
-                  With \(\mathcal{P}\) the parser algebra & \(\mathcal{A}\) the
-                  ADT algebra
-                </p>
-                <ul class="custom">
-                  <li>
-                    Constructors \(c\): \(\forall x \notin \mathcal{P}, c(x) \in
-                    \mathcal{P}\)
-                    <pre
-                      class="scala"
-                    ><code>def string(s: String): Parser[String]</code></pre>
-                  </li>
-                  <li>
-                    Combinators \(f\): \(\forall c_1, c_2 \in \mathcal{P},
-                    f(c_1, c_2) \in \mathcal{P}\)
-                    <pre
-                      class="scala"
-                    ><code>def orElse[A, B](left: Parser[A], right: Parser[B]): Parser[A | B]</code></pre>
-                  </li>
-                  <li>
-                    Interpreters \(z\): \(\forall c \in \mathcal{P}, x \notin
-                    \mathcal{P}, z(c, x) \in \mathcal{A}\)
-                    <pre
-                      class="scala"
-                    ><code>def parse[A](in: String): Result[A]</code></pre>
-                  </li>
-                </ul>
-              </div>
             </div>
           </section>
-        </section>
-        <section id="functional-design">
-          <h2>Functional design</h2>
           <!-- ---------------------------- Lazy vs eager ---------------------------- -->
           <section id="lazy">
             <div class="fragment">
               <h3>Eager evaluation</h3>
               <div class="flex">
-                <ul class="custom c2">
+                <ul class="custom c50">
                   <li>Evaluation on declaration</li>
                 </ul>
-                <div class="c2">
+                <div class="c50">
                   <pre class="flex scala">
                     <code data-trim data-noescape data-line-numbers>
                       val x = 1 // : Int = 1
@@ -244,11 +345,11 @@
             <div class="fragment">
               <h3>Lazy evaluation</h3>
               <div class="flex">
-                <ul class="custom c2">
+                <ul class="custom c50">
                   <li>Evaluation on call</li>
                   <li>Infinite list, caching, performance optimization...</li>
                 </ul>
-                <div class="c2">
+                <div class="c50">
                   <pre class="flex scala">
                     <code data-trim data-noescape data-line-numbers>
                       lazy val x = 1 // : Int = ???
@@ -267,17 +368,17 @@
             <div class="fragment">
               <h3>By-value</h3>
               <div class="flex">
-                <p class="custom c2">
+                <p class="custom c50">
                   Arguments evaluated before the body (~ Eager evaluation)
                 </p>
-                <div class="c2">
+                <div class="c50">
                   <pre class="flex scala">
                     <code data-trim data-noescape data-line-numbers>
-                      def foo(x: => Int) =
+                      def foo(x: Int) =
                         for
                           _ <- 0 until 3
                         yield x
-                      foo(Random.nextInt(10)) // (1, 1, 1)
+                      foo(R.nextInt(10)) // = (1, 1, 1)
                     </code>
                   </pre>
                 </div>
@@ -286,18 +387,18 @@
             <div class="fragment">
               <h3>By-name</h3>
               <div class="flex">
-                <div class="c2">
+                <div class="c50">
                   <pre class="flex scala">
                     <code data-trim data-noescape data-line-numbers>
                       def foo(x: => Int) =
                         for
                           _ <- 0 until 3
                         yield x
-                      foo(Random.nextInt(10)) // (2, 8, 1)
+                      foo(R.nextInt(10)) // = (2, 8, 1)
                     </code>
                   </pre>
                 </div>
-                <ul class="custom c2">
+                <ul class="custom c50">
                   <li>Arguments evaluated when called (~ Lazy evaluation)</li>
                   <li>Avoid unnecessary computations</li>
                 </ul>
@@ -306,54 +407,53 @@
           </section>
           <!-- ------------------------------ Lazy List ------------------------------ -->
           <section id="lazy-list">
-            <h3>Lazy List implementation</h3>
-            <div class="r-stack">
-              <pre
-                class="fragment scala fade-in-then-out"
-                data-fragment-index="0"
-              >
-                <code data-trim data-noescape data-line-numbers>
-                  sealed abstract class LazyList[A]
-                    def map[B](f: A => B): LazyList[A]
-                    def filter(p: A => Boolean): LazyList[A]
-                    def takeAsList(n: Int): List[A] // n first elements with forced evaluation
-                  object LazyList:
-                    def generate[A](start: A)(generator: A => A): LazyList[A] =
-                      new LazyListCons(
-                        start,
-                        generate(generator(start))(generator)
-                      )
-  
-                  class LazyListCons[A](h: => A, t: => LazyList[A]) extends LazyList[A]
-                  class LazyListEmpty[A] extends LazyList[A]
-                </code>
-              </pre>
-              <pre class="fragment scala fade-in">
-                <code data-trim data-noescape data-line-numbers>
-                  val integers = LazyList.generate(0)(_ + 1)
-                  // integers: LazyList[Int] = LazyListCons@...
-                  
-                  integers
-                    .map(_ * 2)
-                    .takeAsList(10) // List(0, 2, ..., 16, 18)
+            <h3>By-name example: Lazy List</h3>
+            <pre class="scala">
+              <code data-trim data-noescape data-line-numbers="1-4|13-14|6-11|">
+                sealed abstract class LazyList[A]
+                  def map[B](f: A => B): LazyList[A]
+                  def filter(p: A => Boolean): LazyList[A]
+                  def forceEval(n: Int): List[A]
 
-                  integers
-                    .map(_ * 2)
-                    .filter( _ % 3 == 0)
-                    .takeAsList(10) // List(0, 6, 12, ..., 42, 48, 54)
-                </code>
-              </pre>
-            </div>
+                object LazyList:
+                  def generate[A](start: A)(generator: A => A): LazyList[A] =
+                    new LazyListCons(
+                      start,
+                      generate(generator(start))(generator)
+                    )
+
+                class Cons[A](h: => A, t: => LazyList[A]) extends LazyList[A]
+                class Empty[A] extends LazyList[A]
+              </code>
+            </pre>
+          </section>
+          <section>
+            <h3>By-name example: usage</h3>
+            <pre class="scala">
+              <code data-trim data-noescape data-line-numbers="1-2|4-6|8-11|">
+                val integers = LazyList.generate(0)(_ + 1)
+                // integers: LazyList[Int] = LazyListCons@...
+                
+                integers
+                  .map(_ * 2)
+                  .forceEval(10) // List(0, 2, ..., 16, 18)
+
+                integers
+                  .map(_ * 2)
+                  .filter( _ % 3 == 0)
+                  .forceEval(10) // List(0, 6, 12, ..., 42, 48, 54)
+              </code>
+            </pre>
           </section>
           <!-- ----------------------------- Given/using ----------------------------- -->
           <section id="given-using">
             <h3>Given/using (implicit values)</h3>
-            <div class="flex">
-              <p class="c2">
+            <div class="fragment flex">
+              <p class="c45">
                 <u>using</u> defines a value to be injected by the compiler,
                 based on the type among the <u>given</u> values in scope
               </p>
-              <div class="c2">
+              <div class="fragment c55">
                 <pre class="scala">
                   <code data-trim data-noescape data-line-numbers>
                     given life: Int = 42
@@ -366,9 +466,8 @@
                 </pre>
               </div>
             </div>
-            <div class="flex">
-              <p class="c2">Shorthand for generics</p>
-              <div class="c2">
+            <div class="fragment flex">
+              <div class="fragment c55">
                 <pre class="scala">
                   <code data-trim data-noescape data-line-numbers>
                     def foo1[A](...)(using t: Type[A])
@@ -377,20 +476,25 @@
                   </code>
                 </pre>
               </div>
+              <p class="c45">Shorthand for generics</p>
             </div>
           </section>
           <!-- -------------------------- Extension methods -------------------------- -->
           <section>
             <h3>Extension methods</h3>
-            <p>In Scala we can define extension methods for any type we want. It is <u>not</u> equivalent to creating a sub-class</p>
-            <pre class="scala">
-              <code data-trim data-noescape data-line-numbers="1-2|3|6-8|10-11|">
+            <p>
+              In Scala we can define extension methods for any type we want. It
+              is <u>not</u> equivalent to creating a sub-class
+            </p>
+            <pre class="fragment scala">
+              <code data-trim data-noescape data-line-numbers="1-2|3|6-9|11-12|">
                 // define extension method for any non-generic type
                 extension [A](a: A)
                   def foo: String = "foo"
                   ...
                 
-                  // define extensions available only if an instance of Something is in scope
+                // define extensions methods available only
+                // if an instance of Something[A] is in scope
                 extension [A: Something](a: A)
                   def bar: String = "bar"
                 
@@ -399,6 +503,12 @@
               </code>
             </pre>
           </section>
+        </section>
+        <!-- ----------------------------------------------------------------------- -->
+        <!--                            Functional design                            -->
+        <!-- ----------------------------------------------------------------------- -->
+        <section id="functional-design">
+          <h2>Functional design</h2>
           <!-- ------------------------------ Variance ------------------------------- -->
           <section id="variance">
             <h3>Variance</h3>
@@ -428,31 +538,31 @@
               type-safety
             </p>
             <div class="flex">
-              <div class="fragment c2 fade-in">
+              <div class="fragment c50 fade-in">
                 <h4>Problem</h4>
                 <pre class="scala">
                   <code data-trim data-noescape data-line-numbers="1-2|4|5|7">
                     sealed trait List[+A]:
                       def ::(a: A): List[A] // prepend
     
-                    val dogs: List[Dog] = List(Dog())
-                    val animals: List[Animal] = dogs
+                    val d: List[Dog] = List(Dog())
+                    val list: List[Animal] = d
                     
-                    Cat() :: animals // type error!
+                    Cat() :: list // type error!
                   </code> 
                 </pre>
               </div>
-              <div class="fragment c2 fade-in">
+              <div class="fragment c50 fade-in">
                 <h4>Solution</h4>
                 <pre class="scala">
                   <code data-trim data-noescape data-line-numbers="2|7">
                     sealed trait List[+A]:
                       def ::[B >: A](b: B): List[B]
 
-                    val dogs: List[Dog] = List(Dog())
-                    val animals: List[Animal] = dogs
+                    val d: List[Dog] = List(Dog())
+                    val list: List[Animal] = d
 
-                    Cat() :: animals // : List[Animal]
+                    Cat() :: list // : List[Animal]
                     </code>
                   </pre>
               </div>
@@ -495,19 +605,22 @@
                   </code>
                 </pre>
               </div>
-              <div class="fragment fade-in-then-out">
+              <div class="fragment fade-in">
                 <h4>Type class</h4>
                 <pre class="scala">
-                  <code data-trim data-noescape data-line-numbers>
+                  <code data-trim data-noescape data-line-numbers="1,3|5-6|8-9|11-12|">
                     trait Encoder[-A] { def encode (a: A): String }
   
                     abstract class Animal
 
-                    extension [A](a: A)(using encoder: Encoder[A])
-                      def encode: String = encoder.encode(a)
-
+                    def encode[A](a: A)(using encoder: Encode[A]): String =
+                      encoder.encode(a)
+                      
                     given Encoder[Cat] with
                       def encode(a: Cat) = "A cat"
+                      
+                    extension [A](a: A)(using encoder: Encoder[A])
+                      def encode: String = encoder.encode(a)
 
                     aCat.encode // "A cat"
                   </code>
@@ -555,11 +668,11 @@
             </pre>
           </section>
           <section id="tc-exercice">
+            <h3>Exercices solution</h3>
             <div class="r-stack">
-              <div class="fragment fade-in-then-out">
-                <h3>Exercices solution 1</h3>
+              <div class="fragment">
                 <pre class="scala">
-                  <code data-trim data-noescape data-line-numbers>
+                  <code data-trim data-noescape data-line-numbers="1-3|5-10|12-14|">
                     // 1. TC definition
                     trait JsonEncoder[-T]:
                       def encode(t: T): String 
@@ -577,10 +690,9 @@
                   </code>
                 </pre>
               </div>
-              <div class="fragment fade-in-then-out">
-                <h3>Exercices solution 2</h3>
+              <div class="fragment fade-in">
                 <pre class="scala">
-                  <code data-trim data-noescape data-line-numbers>
+                  <code data-trim data-noescape data-line-numbers="1-4|6-9|11-14|">
                     // TC instance for List[T]
                     given [T: JsonEncoder]: JsonEncoder[List[T]] with
                       def encode(list: List[T]): String =
@@ -600,35 +712,18 @@
               </div>
             </div>
           </section>
-          <!-- ----------------------------- Base types ------------------------------ -->
-          <section id="base-type">
-            <h3>Base types</h3>
-
-            <pre class="scala">
-              <code data-trim data-noescape data-line-numbers>
-                sealed trait Parser[+A]:
-                  def parse(input: String): Result[A]
-                  protected def parse(input: String, index: Int): Result[A]
-            
-                sealed trait Result[+A]:
-                  def map[B](f: A => B): Result[B]
-                  def orElse[B](that: => Result[B]): Result[A | B]
-
-                case class Success[+A](...) extends Result[A]
-                case class Failure extends Result[Nothing]
-              </code>
-            </pre>
-          </section>
           <!-- ------------------------------- Common TC ------------------------------- -->
           <section id="functor">
             <!--Functor-->
             <h3>Functor</h3>
             <pre class="scala">
-              <code data-trim data-noescape data-line-numbers="1-2|4-5|7-9|">
+              <code data-trim data-noescape data-line-numbers="1-2|4-7|9-11|">
                 trait Functor[F[_]]:
                   def map[A, B](fa: F[A])(f: A => B): F[B]
 
-                def mapThat[A, B, F[_]](fa: F[A])(f: A => B)(using functor: Functor[F]): F[B] =
+                def mapThat[A, B, F[_]](fa: F[A])(f: A => B)(
+                  using functor: Functor[F]
+                ): F[B] =
                   functor.map(fa)(f)
                 
                 mapThat(List(1, 2, 3))(_ + 1) // List(2, 3, 4)
@@ -662,11 +757,13 @@
             <!-- Semigroupal -->
             <h3>Semigroupal</h3>
             <pre class="scala">
-              <code data-trim data-noescape data-line-numbers="1-2|4-5|7-9|">
+              <code data-trim data-noescape data-line-numbers="1-2|4-7|9-11|">
                 trait Semigroupal[F[_]]:
                   def product[A, B](fa: F[A], fb: F[B]): F[(A, B)]
 
-                def tupleAll[A, B, F[_]](fa: F[A], fb: F[B])(using sg: Semigroupal[F]): F[(A, B)] =
+                def tupleAll[A, B, F[_]](fa: F[A], fb: F[B])(
+                  using sg: Semigroupal[F]
+                ): F[(A, B)] =
                   sg.product(fa, fb)
                 
                 tupleAll(List(1, 2), List(4, 5)) // List((1, 4), (1, 5), (2, 4), (2, 5))
@@ -680,27 +777,27 @@
           <section>
             <h3>Semigroupal combinations</h3>
             <div class="flex">
-              <div class="fragment c2 fade-in">
+              <div class="fragment c50 fade-in">
                 <h4>Applicative</h4>
                 <p>For non-monadic types</p>
                 <pre class="scala">
                   <code data-trim data-noescape>
-                    Semigroupal[Validated].product(
-                      Invalid(new Exception("Boom")),
-                      Invalid(new Exception("Bang"))
+                    Semigroupal[Future].product(
+                      Future.failed(new Exception("Boom")),
+                      Future.failed(new Exception("Bang"))
                     ) // ~ Future("Boom", "Bang")
                   </code>
                 </pre>
                 <p class="small">Allows error propagation</p>
               </div>
-              <div class="fragment c2 fade-in">
+              <div class="fragment c50 fade-in">
                 <h4>Monadic</h4>
                 <p>For monadic types</p>
                 <pre class="scala">
                   <code data-trim data-noescape>
                     Semigroupal[Future].product(
-                      Future(new Exception("Boom")),
-                      Future(new Exception("Bang"))
+                      Future.failed(new Exception("Boom")),
+                      Future.failed(new Exception("Bang"))
                     ) // ~ Future("Boom")
                   </code>
                 </pre>
@@ -708,37 +805,39 @@
               </div>
             </div>
           </section>
-          <!-- Applicative -->
-          <section id="applicative">
-            <h3>Applicative</h3>
+          <!-- Apply -->
+          <section id="Apply">
+            <h3>Apply</h3>
             <pre class="scala">
-              <code data-trim data-noescape data-line-numbers="1-3|8-9|11-12|5-6|14|">
-                trait Applicative[F[_]]:
-                  def pure[A](a: A): F[A]
+              <code data-trim data-noescape data-line-numbers="1-2|9|11|4-7|13|">
+                trait Apply[F[_]]:
                   def ap[A, B](ff: F[A => B])(fa: F[A]): F[B]
 
-                def applyAll[A, B, W[_]](wf: W[A => B], wa: W[A])(using ap: Applicative[W]) =
-                  ap.ap(wf)(wa)
+                def applyAll[A, B, W[_]](wf: W[A => B], wa: W[A])(
+                  using apply: Apply[W]
+                ) =
+                  apply.ap(wf)(wa)
 
-                val f: (Int, Int) => Int = _ + _
                 val (list1, list2) = (List(0, 1), List(5, 10, 15))
 
-                val adder: List[Int => Int] = list1.map(i1 => (i2: Int) => f(i1, i2))
-                // List(i2 => 0 + i2, i2 => 1 + i2)
+                val adder: List[Int => Int] = list1.map(i1 => (i2: Int) => i1 + i2)
 
                 applyAll(adder, list2) // List(5, 10, 15, 6, 11, 16)
                 // Allows to apply independent effects
               </code>
+            </pre>
           </section>
           <!-- Monad -->
           <section id="monad">
             <h3>Monad</h3>
             <pre class="scala">
-              <code data-trim data-noescape data-line-numbers>
+              <code data-trim data-noescape data-line-numbers="1-2|4-7|9-10|">
                 trait Monad[F[_]]:
                   def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B]
 
-                def chain[A, B, F[_]: Monad](fa: F[A])(f: A => F[B])(using m: Monad[F]): F[B] =
+                def chain[A, B, F[_]: Monad](fa: F[A])(f: A => F[B])(
+                  using m: Monad[F]
+                ): F[B] =
                   m.flatMap(fa)(f)
 
                 chain(List(1, 2, 3))(i => List(i, i + 1)) // List(1, 2, 2, 3, 3, 4)
@@ -752,17 +851,548 @@
           <section>
             <h3>Design from type class</h3>
             <ul class="custom">
-              <li class="fragment"><a href="#functor">Functor</a>: allow to change the parser's result value</li>
-              <li class="fragment"><a href="#monoid">Monoid</a>: combine parsers (AND / OR operation) or values</li>
-              <li class="fragment"><a href="#semigroupal">Semigroupal</a>: operate on the result of multiple parsers at once</li>
-              <li class="fragment"><a href="#applicative">Applicative</a>: for a more convenient method</li>
-              <li class="fragment"><a href="#monad">Monad</a>: select a parser based on a first parser's result (e.g. choose "parser1" if "def" or "parser2" if "val")</li>
-              <li class="fragment"><a href="#lazy">Lazy</a>: interesting things to do (later)</li>
+              <li>
+                <a href="#functor">Functor</a>:
+                <span class="fragment"
+                  >allow to change the parser's result value</span
+                >
+              </li>
+              <li>
+                <a href="#monoid">Monoid</a>:
+                <span class="fragment"
+                  >combine parsers (AND / OR operation) or values</span
+                >
+              </li>
+              <li>
+                <a href="#semigroupal">Semigroupal</a>:
+                <span class="fragment"
+                  >operate on the result of multiple parsers at once</span
+                >
+              </li>
+              <li>
+                <a href="#Apply">Apply</a>:
+                <span class="fragment"
+                  >for a more convenient
+                  <span class="code">.mapN</span> method</span
+                >
+              </li>
+              <li>
+                <a href="#monad">Monad</a>:
+                <span class="fragment"
+                  >select a parser based on a first parser's result (e.g. choose
+                  "parser1" if "def" or "parser2" if "val")</span
+                >
+              </li>
+              <li>
+                <a href="#lazy">Lazy</a>:
+                <span class="fragment">interesting things to do (later)</span>
+              </li>
             </ul>
           </section>
         </section>
+        <!-- ----------------------------------------------------------------------- -->
+        <!--                           Parsing expressions                           -->
+        <!-- ----------------------------------------------------------------------- -->
         <section id="parsing">
           <h2>Parsing expressions</h2>
+          <section>
+            <h3>Clone this repo</h3>
+            <a href="https://github.com/iusildra/case-study-parser">https://github.com/iusildra/case-study-parser</a>
+          </section>
+          <!-- ----------------------------- Reification ----------------------------- -->
+          <section id="reification">
+            <h3>Reification</h3>
+            <p>1 abstract concept = 1 implementation and reification methods</p>
+            <pre class="fragment scala">
+              <code data-trim data-noescape data-line-numbers="1-2|5-7,9|3-4,10-13|">
+              trait Parser[+A]:
+                def parse(input: String): Result[A] // reification method
+                def map[B](f: A => B): Parser[B] = // reification method
+                  Map(this, f)
+              object Parser:
+                def string(s: String): Parser[String] = // reification method
+                  ParserString(s)
+            
+              case class ParserString(s: String) extends Parser[String] {}
+              case class Map[A, B](
+                source: Parser[A],
+                f: A => B
+              ) extends Parser[B] {}
+              </code>
+            </pre>
+          </section>
+          <section>
+            <h3>Reification methods</h3>
+            <p>
+              With \(\mathcal{P}\) the parser algebra & \(\mathcal{A}\) the ADT
+              algebra
+            </p>
+            <ul class="custom">
+              <li class="fragment">
+                Constructors \(c\): \(\forall x \notin \mathcal{P}, c(x) \in
+                \mathcal{P}\)
+                <pre
+                  class="scala"
+                ><code>def string(s: String): Parser[String]</code></pre>
+              </li>
+              <li class="fragment">
+                Combinators \(f\): \(\forall c_1, c_2 \in \mathcal{P}, f(c_1,
+                c_2) \in \mathcal{P}\)
+                <pre
+                  class="scala"
+                ><code>def orElse[A, B](left: Parser[A], right: Parser[B]): Parser[A | B]</code></pre>
+              </li>
+              <li class="fragment">
+                Interpreters \(z\): \(\forall c \in \mathcal{P}, x \notin
+                \mathcal{P}, z(c, x) \in \mathcal{A}\)
+                <pre
+                  class="scala"
+                ><code>def parse[A](in: String): Result[A]</code></pre>
+              </li>
+            </ul>
+          </section>
+          <!-- ----------------------------- Base types ------------------------------ -->
+          <section id="base-type">
+            <h3>Base types</h3>
+
+            <pre class="scala">
+              <code data-trim data-noescape data-line-numbers="1-3|5-7|9-10|">
+                sealed trait Parser[+A]:
+                  def parse(input: String): Result[A]
+                  protected def parse(input: String, index: Int): Result[A]
+            
+                sealed trait Result[+A]:
+                  def map[B](f: A => B): Result[B]
+                  def orElse[B](that: Result[B]): Result[A | B]
+
+                case class Success[+A](...) extends Result[A]
+                case class Failure extends Result[Nothing]
+              </code>
+            </pre>
+          </section>
+          <!-- ------------------------- map implementation -------------------------- -->
+          <section id="map-impl">
+            <h3>Parser map</h3>
+            <pre class="scala">
+              <code data-trim data-noescape data-line-numbers="|3-6|1|7-8|10-11|">
+                sealed trait Parser[+A] { def map[B](f: A => B): Parser[B] }
+
+                class Map[A, B](
+                  source: Parser[A],
+                  f: A => B
+                ) extends Parser[B]:
+                  def parse(input: String, index: Int): Result[B] =
+                    source.parse(input, index).map(f)
+
+                case class Ident(value: String)
+                Parser.alphas.oneOrMore.combineAll.map(s => Ident(s))
+              </code>
+            </pre>
+          </section>
+          <!-- ------------------------ orElse implementation ------------------------ -->
+          <section id="orElse(impl)">
+            <h3>Parser alternative</h3>
+            <pre class="fragment scala">
+              <code data-trim data-noescape data-line-numbers="|4-7|1-2|8-11|13-15|">
+                sealed trait Parser[+A]:
+                  def orElse[B](that: Parser[B]): Parser[A | B]
+
+                class OrElse[A, B](
+                  left: Parser[A],
+                  right: Parser[B]
+                ) extends Parser[A | B]:
+                  def parse(input: String, index: Int): Result[A | B] =
+                    left
+                      .parse(input, index)
+                      .orElse(right.parse(input, index))
+
+                Parser.string("def").orElse(Parser.string("val"))
+              </code>
+            </pre>
+          </section>
+          <!-- ----------------------- product implementation ------------------------ -->
+          <section id="product-impl">
+            <h3>Parser product</h3>
+            <pre class="fragment scala">
+              <code data-trim data-noescape data-line-numbers="|4-7|1-2|8-12|14-17|">
+                sealed trait Parser[+A]:
+                  def product[B](that: Parser[B]): Parser[(A, B)]
+
+                class Product[A, B](
+                  l: Parser[A],
+                  r: Parser[B]
+                ) extends Parser[(A, B)]:
+                  def parse(input: String, index: Int): Result[(A, B)] =
+                    l.parse(input, index) match
+                      case fail: Failure => fail
+                      case Success(left, _, offset) =>
+                        r.parse(input, offset).map((left, _))
+
+                parser1.product(parser2).product(parser3) // ((A, B), C)
+              </code>
+            </pre>
+          </section>
+          <!-- -------------------------- Apply case --------------------------- -->
+          <section id="apply-impl">
+            <h3>Apply[F[_]] instance</h3>
+            <pre class="fragment scala">
+              <code data-trim data-noescape data-line-numbers="1-6|8-11|">
+                object Parser:
+                  given parserApply: Apply[Parser] with
+                    def map[A, B](fa: Parser[A])(f: A => B): Parser[B] = fa.map(f)
+
+                    def ap[A, B](ff: Parser[A => B])(fa: Parser[A]): Parser[B] =
+                      ff.product(fa).map((f, a) => f(a))
+
+                (parser1, parser2, parser3).mapN {
+                  case (a, b, c) => ???
+                }
+              </code>
+            </pre>
+          </section>
+          <!-- -------------------------------- Monad -------------------------------- -->
+          <section id="monad-impl">
+            <h3>flatMap implementation</h3>
+            <pre class="fragment scala">
+              <code data-trim data-noescape data-line-numbers="3-6|1|7-11|13-15|">
+                trait Parser[+A] { def flatMap[B](f: A => Parser[B]): Parser[B] }
+
+                class FlatMap[A, B](
+                  source: Parser[A],
+                  f: A => Parser[B]
+                ) extends Parser[B]:
+                  def parse(input: String, index: Int): Result[B] =
+                    source.parse(input, index) match
+                      case fail: Failure => fail
+                      case Success(result, _, offset) =>
+                        f(result).parse(input, offset)
+
+                fieldParser.flatMap:
+                  case "def" => defParser
+                  case "val" => valParser
+              </code>
+            </pre>
+          </section>
+          <!-- ----------------------------- Kleene star ----------------------------- -->
+          <section id="kleeneStar">
+            <h3>Repeated (Kleene star)</h3>
+            <pre class="fragment scala">
+              <code data-trim data-noescape data-line-numbers="5-7|1-3|8-11|13-17|19-20|22-25|">
+                trait Parser[+A]:
+                  def zeroOrMore[B >: A]: KleeneStarParser[B] =
+                    KleeneStarParser(this)
+
+                class KleeneStarParser[A](
+                  parser: Parser[A]
+                ) extends Parser[List[A]]:
+                  def rec(input: String, idx: Int, res: Queue[A]): (Int,Queue[A]) =
+                    parser.parse(input, idx) match
+                      case fail: Failure => (idx, res)
+                      case Success(r, _, offset) => rec(input, offset, res += r)
+                
+                  def parse(input: String, index: Int): Result[List[A]] =
+                    rec(input, index) match
+                      case (_, Queue()) => Result.success(List(), input, index)
+                      case (offset, results) =>
+                        Result.success(results.toList, input, offset)
+
+                  def combineAll(using monoid: Monoid[A]): Parser[A] =
+                    this.map(_.foldLeft(monoid.empty)(monoid.combine))
+                    
+                  def combineWith[F[_]](empty: F[A])(
+                    combine: (F[A], A) => F[A]
+                  ): Parser[F[A]] =
+                    this.map(_.foldLeft(empty)(combine))
+              </code>
+            </pre>
+          </section>
+          <section id="full-tc-example">
+            <h3>Exercice: method parser</h3>
+            <pre class="fragment scala">
+              <code data-trim data-noescape>
+                // def foo(x: Int, y: String): Boolean
+                case class Ident(value: String)
+                case class Param(name: Ident, tpe: Ident)
+                case class Method(name: Ident, params: Queue[Param], tpe: Ident)
+              </code>
+            </pre>
+            <pre class="fragment scala">
+              <code class="h275" data-trim data-noescape data-line-numbers="1-10|12-14|16-23|25-30|31-33|35-45|"><script type="text/template">
+                val ident = // \w+
+                  Parser.alphas.oneOrMore
+                    .combineAll.map(s => Ident(s))
+                val whitespace = // [ ]*
+                  Parser.chars(' ')
+                    .zeroOrMore.combineAll
+                val typeSep = // [ ]*:[ ]*
+                  whitespace *> Parser.char(':') <* whitespace
+                val paramSep = // [ ]*,[ ]*
+                  whitespace *> Parser.char(',') <* whitespace
+
+                val param = // <ident>[ ]*:[ ]*<ident>
+                  (ident <* typeSep, ident)
+                    .mapN { Param(_, _) }
+
+                val paramList = // (<param> . <paramSep>)*(<param>)?
+                  (param <* paramSep).zeroOrMore
+                    .combineWith(Queue.empty)(_ :+ _)
+                    .product(param.orElse(Parser.empty))
+                    .map {
+                      case (a, b: Param) => a :+ b
+                      case (a, null) => a
+                    }
+                
+                val methodName = // "def <ident>"
+                  Parser.string("def ") *> ident
+                val methodParams = // "(<paramList>)"
+                  char('(') *> paramList <* char(')')
+                val methodType = // ":[ ]*<ident>"
+                  typeSep *> ident
+                val methodParser = // "def <ident>(<paramList>)<methodType>"
+                  (methodName, methodParams, methodType)
+                    .mapN { case (a, b, c) => Method(a, b, c) }
+
+                methodParser.parse("def foo(x: Int, y: Int): Int").get
+                /*
+                  Method(
+                    Ident(foo),
+                    Queue(
+                      Param(Ident(x), Ident(Int)),
+                      Param(Ident(y), Ident(Int))
+                    ),
+                    Ident(Int)
+                  )
+                */
+              </script></code>
+            </pre>
+          </section>
+          <!-- ------------------------ Recursive expression ------------------------- -->
+          <section id="binary exp">
+            <h3>Exercice: Binary expression</h3>
+            <pre class="scala">
+              <code data-trim data-noescape data-line-numbers="1-2,4-6,8-15|17-28|"><script type="text/template">
+                sealed trait Expr:
+                  def +(that: Expr) = Add(this, that)
+
+                case class Literal(value: Int) extends Expr
+                case class Variable(name: String) extends Expr
+                case class Add(left: Expr, right: Expr) extends Expr
+
+                val nbr = // \d+
+                  Parser.digits.oneOrMore.combineAll.map(i => Literal(i))
+                val nme = // \w+
+                  Parser.chars.oneOrMore.combineAll.map(s => Variable(s))
+                val exp = // <nbr> | <nme>
+                  nbr.orElse(nme)
+                val add = // [ ]*\+[ ]*
+                  whitespace *> Parser.char('+') <* whitespace
+                
+                val additionParser = (exp, add, exp).mapN { case (l, _, r) => l + r }
+                additionParser.parse("1+2+3").get // Add(1, 2)
+              </script></code>
+            </pre>
+          </section>
+          <section id="recursive-exp">
+            <h3>Recursive expressions</h3>
+            <div class="fragment flex">
+              <div class="c66">
+                <pre class="scala">
+                  <code data-trim="" data-noescape="" data-line-numbers="">
+                    val parser0 =
+                      (exp, add, exp)
+                        .mapN((l, _, r) => l + r)
+                  </code>
+                </pre>
+              </div>
+              <p class="fragment c33">Cannot parse recursive expressions</p>
+            </div>
+            <div class="fragment flex">
+              <p class="fragment c33">NullPointerException</p>
+              <div class="c66">
+                <pre class="scala">
+                  <code data-trim="" data-noescape="" data-line-numbers="">
+                    val parser1: Parser[Add] =
+                      (exp, add, parser1.orElse(exp))
+                        .mapN((l, _, r) => l + r)
+                  </code>
+                </pre>
+              </div>
+            </div>
+            <div class="fragment flex">
+              <div class="c66">
+                <pre class="scala">
+                  <code data-trim="" data-noescape="" data-line-numbers="">
+                    def parser2: Parser[Add] =
+                      (exp, add, parser2.orElse(exp))
+                        .mapN((l, _, r) => l + r)
+                    
+                    parser2.parse("1+2+3")
+                  </code>
+                </pre>
+              </div>
+              <p class="fragment c33">StackOverflowError!</p>
+            </div>
+          </section>
+          <section id="delaying">
+            <h3>Delaying evaluation</h3>
+            <pre class="fragment scala">
+              <code data-trim="" data-noescape="" data-line-numbers="4|1-2|5-7">
+                object Parser:
+                  def lzy[T](parser: => Parser[T]): Parser[T] = LazyParser(parser)
+
+                class LazyParser[A](source: => Parser[A]) extends Parser[A]:
+                  override def parse(input: String, index: Int): Result[A] =
+                    source.parse(input, index)
+              </code>
+            </pre>
+            <pre class="fragment scala">
+              <code class="h225" data-trim data-noescape="" data-line-numbers="1-3|4-13">
+                def parser3: Parser[Add] =
+                  (exp, add, Parser.lzy(additionParser3).orElse(exp))
+                    .mapN((l, _, r) => l + r)
+                additionParser3.parse("1+2+3")
+                // Add(
+                //   Literal(1),
+                //   Add(Literal(2), Literal(3))
+                // )
+              </code>
+            </pre>
+          </section>
+        </section>
+        <!-- ----------------------------------------------------------------------- -->
+        <!--                         Thoughts on performance                         -->
+        <!-- ----------------------------------------------------------------------- -->
+        <section>
+          <h2>Thoughts on performances</h2>
+          <!-- ------------------------------ Overheads ------------------------------ -->
+          <section>
+            <h3>Lots of overhead</h3>
+            <div class="flex">
+              <div class="fragment c50 fade-in">
+                <h4>Example</h4>
+                <pre class="scala">
+                  <code data-trim data-noescape data-line-numbers>
+                    Parser.alphas
+                    // ParserOrElse(
+                    //  initial = ParserOrElse(
+                    //   initial = ParserOrElse(
+                    //    ...
+                    //     initial = ParserString(a),
+                    //     recover = ParserString(b)
+                    //    ...
+                    //   )
+                    //   recover = ParserString(y)
+                    //  )
+                    //  recover = ParserString(z)
+                    // )
+                  </code> 
+                </pre>
+              </div>
+              <div class="fragment c50 fade-in">
+                <h4>Comparison</h4>
+                <pre class="scala">
+                  <code data-trim data-noescape data-line-numbers="3-6|8-9">
+                    val randomString = ???
+
+                    parseWith(randomString): c =>
+                      (97 <= c && c <= 122)
+                      || (65 <= c && c <= 90)
+                    // Takes <100ms
+
+                    strParser.parse(randomString)
+                    // Takes > 10s
+                  </code>
+                </pre>
+                <p class="fragment">
+                  Adding a
+                  <span class="code">.charWhere(p: A => Boolean)</span> method
+                  is a solution
+                </p>
+              </div>
+            </div>
+          </section>
+          <!-- ----------------------- Unnecessary evaluations ----------------------- -->
+          <section>
+            <h3>Unnecessary evaluations</h3>
+            <div class="flex">
+              <div class="fragment c50 fade-in">
+                <h4>Example</h4>
+                <pre class="scala">
+                  <code data-trim data-noescape data-line-numbers>
+                    val p =
+                      strParser.orElse(intParser)
+                    // ParserOrElse(
+                    //  initial = strParser
+                    //  recover = intParser
+                    // )
+                    p.parse("a string")
+                  </code> 
+                </pre>
+                <p class="fragment"><span class="code">intParser</span> evaluation is forced, even if we don't need it</p>
+              </div>
+              <div class="fragment c50 fade-in">
+                <h4>Solution</h4>
+                <pre class="scala">
+                  <code data-trim data-noescape data-line-numbers="3,8">
+                    sealed trait Parser[+A]:
+                      def orElse[B](
+                        that: => Parser[B]
+                      ): Parser[A | B]
+
+                    class ParserOrElse[A, B](
+                      left: Parser[A],
+                      right: => Parser[B]
+                    ) extends Parser[A | B]:
+                  </code>
+                </pre>
+              </div>
+            </div>
+          </section>
+          <!-- --------------------- Unnecessary (re)evaluations --------------------- -->
+          <section>
+            <h3>Unnecessary (re)evaluations</h3>
+            <div class="flex">
+              <div class="fragment c50 fade-in">
+                <h4>Example</h4>
+                <pre class="scala">
+                  <code data-trim data-noescape data-line-numbers>
+                    class LazyParser[A](
+                      source: => Parser[A]
+                    ) extends Parser[A]:
+                      override def parse(...) =
+                        source.parse(...)
+                  </code>
+                </pre>
+                <p class="fragment"><span class="code">source</span> is recomputed each type the <span class="code">.parse</span> method is called</p>
+              </div>
+              <div class="fragment c50 fade-in">
+                <h4>Solution</h4>
+                <pre class="scala">
+                  <code data-trim data-noescape data-line-numbers="4,6">
+                    class LazyParser[A](
+                      source: => Parser[A]
+                    ) extends Parser[A]:
+                      lazy val cached = source
+                      override def parse(...) =
+                        cachedParser.parse(...)
+                  </code>
+                </pre>
+                <p class="fragment">
+                  Also called "memoization", or call-by-need
+                </p>
+              </div>
+            </div>
+          </section>
+        </section>
+        <!-- ----------------------------------------------------------------------- -->
+        <!--                                   End                                   -->
+        <!-- ----------------------------------------------------------------------- -->
+        <section>
+          <h1>Questions ?</h1>
+        </section>
+        <section>
+          <h1>Thanks for your attention!</h1>
+          <h4>And your patience</h4>
         </section>
       </div>
     </div>
@@ -779,8 +1409,6 @@
       // - https://revealjs.com/config/
       Reveal.initialize({
         hash: true,
-
-        // Learn about plugins: https://revealjs.com/plugins/
         plugins: [
           RevealMarkdown,
           RevealHighlight,

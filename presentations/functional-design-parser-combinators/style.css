@@ -3,7 +3,7 @@
   font-size: xx-large;
 }
 
-p {
+p, table td, table th, table{
   font-size: xx-large;
 }
 
@@ -19,7 +19,7 @@ ol.custom li, ul.custom li {
   font-family: monospace;
   font-size: 1em;
   background-color: #666;
-  padding: 0.1em 0.2em;
+  padding: 0.1em 0.1em;
   border-radius: 3px;
 }
 
@@ -31,18 +31,66 @@ ol.custom li, ul.custom li {
   display: flex;
 }
 
-.c1 {
+.c100 {
   width: 100%;
 }
 
-.c2 {
+.c70 {
+  width: 70%;
+}
+
+.c66 {
+  width: 66%;
+}
+
+.c60 {
+  width: 60%;
+}
+
+.c55 {
+  width: 55%;
+}
+
+.c50 {
   width: 50%;
 }
 
-.c3 {
+.c45 {
+  width: 45%;
+}
+
+.c40 {
+  width: 40%;
+}
+
+.c33 {
   width: 33%;
 }
 
-.c4 {
-  width: 25%;
+.c30 {
+  width: 30%;
+}
+
+.h275 {
+  height: 275px;
+}
+
+.h225 {
+  height: 225px;
+}
+
+table.reverse {
+  display: table;
+}
+
+table.reverse tr {
+  display: table-cell;
+}
+
+table.reverse tr td {
+  display: block;
+}
+
+table.centered th, table.centered td {
+  text-align: center;
 }
